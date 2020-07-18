@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gorilla/mux"
 	"github.com/vitoraalmeida/desafio-stone-go/handler"
+	"github.com/vitoraalmeida/desafio-stone-go/models"
 	"log"
 	"net/http"
 	"os"
@@ -24,6 +25,7 @@ func main() {
 
 	postRouter := r.Methods("POST").Subrouter()
 	postRouter.HandleFunc("/accounts", ah.CreateAccount)
+	postRouter.HandleFunc("/transfers", th.CreateTransfer)
 
 	log.Println("listening on localhost:3000...")
 
@@ -33,6 +35,8 @@ func main() {
 		Addr:         ":3000",
 		Handler:      r,
 	}
+
+	log.Println(models.TransfersList[0])
 
 	err := s.ListenAndServe()
 	if err != nil {
