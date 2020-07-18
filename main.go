@@ -18,6 +18,7 @@ func main() {
 
 	getRouter := r.Methods("GET").Subrouter()
 	getRouter.HandleFunc("/accounts", ah.ListAccounts)
+	getRouter.HandleFunc("/accounts/{id:[0-9]+}/balance", ah.GetBalance)
 
 	postRouter := r.Methods("POST").Subrouter()
 	postRouter.HandleFunc("/accounts", ah.CreateAccount)

@@ -2,9 +2,12 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"time"
 )
+
+var ErrAccountNotFound = errors.New("models: account not found")
 
 type Account struct {
 	ID        int       `json:"id"`
@@ -22,6 +25,11 @@ func (a *Account) FromJSON(r io.Reader) error {
 
 type Accounts []*Account
 
+func (a *Accounts) ToJSON(w io.Writer) error {
+	e := json.NewEncoder(w)
+	return e.Encode(a)
+}
+
 func GetAccounts() Accounts {
 	return accounts
 }
@@ -31,14 +39,19 @@ func AddAccount(a *Account) {
 	accounts = append(accounts, a)
 }
 
+func FindById(id int) (*Account, error) {
+	for i := range accounts {
+		a := accounts[i]
+		if a.ID == id {
+			return a, nil
+		}
+	}
+	return nil, ErrAccountNotFound
+}
+
 func getNextID() int {
 	a := accounts[len(accounts)-1]
 	return a.ID + 1
-}
-
-func (a *Accounts) ToJSON(w io.Writer) error {
-	e := json.NewEncoder(w)
-	return e.Encode(a)
 }
 
 var accounts = Accounts{

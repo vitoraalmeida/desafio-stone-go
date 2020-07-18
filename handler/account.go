@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"encoding/json"
+	"github.com/gorilla/mux"
 	"github.com/vitoraalmeida/desafio-stone-go/models"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type Accounts struct {
@@ -32,4 +35,31 @@ func (a *Accounts) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	models.AddAccount(acc)
 	a.l.Printf("Prod: %#v", acc)
+}
+
+func (a *Accounts) GetBalance(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+
+	if err != nil {
+		http.Error(w, "unable to convert id", http.StatusBadRequest)
+	}
+	a.l.Printf("Handle GET accounts/%d/balance", id)
+
+	acc, err := models.FindById(id)
+
+	if err == models.ErrAccountNotFound {
+		http.Error(w, "Account not found", http.StatusNotFound)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, "Account not found", http.StatusInternalServerError)
+		return
+	}
+
+	if err = json.NewEncoder(w).Encode(acc.Balance); err != nil {
+		http.Error(w, "Account not found", http.StatusInternalServerError)
+	}
+
 }
