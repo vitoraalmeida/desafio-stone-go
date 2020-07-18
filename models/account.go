@@ -13,7 +13,7 @@ type Account struct {
 	ID        int       `json:"id"`
 	Name      string    `json:"name"`
 	CPF       string    `json:"cpf"`
-	Secret    string    `json:"-"`
+	Secret    string    `json:"secret"`
 	Balance   float32   `json:"balance"`
 	CreatedAt time.Time `json:"created_at"`
 }

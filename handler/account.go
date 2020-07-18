@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/vitoraalmeida/desafio-stone-go/models"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"strconv"
@@ -33,6 +34,16 @@ func (a *Accounts) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	if err := acc.FromJSON(r.Body); err != nil {
 		http.Error(w, "Unable to unmarshal json", http.StatusBadRequest)
 	}
+
+	secret := []byte(acc.Secret)
+	hashSecret, err := bcrypt.GenerateFromPassword(secret, bcrypt.DefaultCost)
+
+	if err != nil {
+		http.Error(w, "Unable to hash secret", http.StatusInternalServerError)
+	}
+
+	acc.Secret = string(hashSecret)
+
 	models.AddAccount(acc)
 	a.l.Printf("Prod: %#v", acc)
 }
