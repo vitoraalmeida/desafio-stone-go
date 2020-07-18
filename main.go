@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"github.com/vitoraalmeida/desafio-stone-go/handler"
 	"github.com/vitoraalmeida/desafio-stone-go/models"
 	"log"
@@ -11,10 +12,18 @@ import (
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error getting env: %v", err)
+	} else {
+		log.Println("We are getting the env values")
+	}
+
 	l := log.New(os.Stdout, "desafio-stone-go", log.LstdFlags)
 
 	ah := handler.NewAccounts(l)
 	th := handler.NewTransfers(l)
+	lh := handler.NewLogin(l)
 
 	r := mux.NewRouter()
 
@@ -26,6 +35,7 @@ func main() {
 	postRouter := r.Methods("POST").Subrouter()
 	postRouter.HandleFunc("/accounts", ah.CreateAccount)
 	postRouter.HandleFunc("/transfers", th.CreateTransfer)
+	postRouter.HandleFunc("/login", lh.SignIn)
 
 	log.Println("listening on localhost:3000...")
 
@@ -38,7 +48,7 @@ func main() {
 
 	log.Println(models.TransfersList[0])
 
-	err := s.ListenAndServe()
+	err = s.ListenAndServe()
 	if err != nil {
 		log.Fatal(err.Error())
 	}

@@ -33,6 +33,7 @@ func (a *Accounts) CreateAccount(w http.ResponseWriter, r *http.Request) {
 
 	if err := acc.FromJSON(r.Body); err != nil {
 		http.Error(w, "Unable to unmarshal json", http.StatusBadRequest)
+		return
 	}
 
 	secret := []byte(acc.Secret)
@@ -40,12 +41,13 @@ func (a *Accounts) CreateAccount(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, "Unable to hash secret", http.StatusInternalServerError)
+		return
 	}
 
 	acc.Secret = string(hashSecret)
 
 	models.AddAccount(acc)
-	a.l.Printf("Prod: %#v", acc)
+	a.l.Printf("Acc: %#v", acc)
 }
 
 func (a *Accounts) GetBalance(w http.ResponseWriter, r *http.Request) {

@@ -49,6 +49,16 @@ func FindById(id int) (*Account, error) {
 	return nil, ErrAccountNotFound
 }
 
+func FindByCPF(cpf string) (*Account, error) {
+	for i := range accounts {
+		a := accounts[i]
+		if a.CPF == cpf {
+			return a, nil
+		}
+	}
+	return nil, ErrAccountNotFound
+}
+
 func getNextID() int {
 	a := accounts[len(accounts)-1]
 	return a.ID + 1
