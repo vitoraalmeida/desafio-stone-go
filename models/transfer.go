@@ -16,6 +16,10 @@ type Transfer struct {
 
 type Transfers []*Transfer
 
+func GetTransfers() Transfers {
+	return transfers
+}
+
 func (t *Transfers) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(t)

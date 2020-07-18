@@ -13,12 +13,14 @@ func main() {
 	l := log.New(os.Stdout, "desafio-stone-go", log.LstdFlags)
 
 	ah := handler.NewAccounts(l)
+	th := handler.NewTransfers(l)
 
 	r := mux.NewRouter()
 
 	getRouter := r.Methods("GET").Subrouter()
 	getRouter.HandleFunc("/accounts", ah.ListAccounts)
 	getRouter.HandleFunc("/accounts/{id:[0-9]+}/balance", ah.GetBalance)
+	getRouter.HandleFunc("/transfers", th.ListTransfers)
 
 	postRouter := r.Methods("POST").Subrouter()
 	postRouter.HandleFunc("/accounts", ah.CreateAccount)
