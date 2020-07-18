@@ -15,10 +15,25 @@ type Account struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+func (a *Account) FromJSON(r io.Reader) error {
+	e := json.NewDecoder(r)
+	return e.Decode(a)
+}
+
 type Accounts []*Account
 
 func GetAccounts() Accounts {
 	return accounts
+}
+
+func AddAccount(a *Account) {
+	a.ID = getNextID()
+	accounts = append(accounts, a)
+}
+
+func getNextID() int {
+	a := accounts[len(accounts)-1]
+	return a.ID + 1
 }
 
 func (a *Accounts) ToJSON(w io.Writer) error {

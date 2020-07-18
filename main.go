@@ -13,9 +13,14 @@ func main() {
 	l := log.New(os.Stdout, "desafio-stone-go", log.LstdFlags)
 
 	ah := handler.NewAccounts(l)
+
 	r := mux.NewRouter()
 
-	r.HandleFunc("/accounts", ah.ListAccounts)
+	getRouter := r.Methods("GET").Subrouter()
+	getRouter.HandleFunc("/accounts", ah.ListAccounts)
+
+	postRouter := r.Methods("POST").Subrouter()
+	postRouter.HandleFunc("/accounts", ah.CreateAccount)
 
 	log.Println("listening on localhost:3000...")
 

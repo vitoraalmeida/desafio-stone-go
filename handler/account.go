@@ -21,3 +21,15 @@ func (a *Accounts) ListAccounts(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unable to marshal json", http.StatusInternalServerError)
 	}
 }
+
+func (a *Accounts) CreateAccount(w http.ResponseWriter, r *http.Request) {
+	a.l.Println("Handle POST accounts")
+
+	acc := &models.Account{}
+
+	if err := acc.FromJSON(r.Body); err != nil {
+		http.Error(w, "Unable to unmarshal json", http.StatusBadRequest)
+	}
+	models.AddAccount(acc)
+	a.l.Printf("Prod: %#v", acc)
+}
