@@ -39,6 +39,28 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	origin_id := tr.AccountOriginID
+	origin_acc, err := models.FindById(origin_id)
+	if err == models.ErrAccountNotFound {
+		http.Error(w, "Account not found", http.StatusNotFound)
+		return
+	}
+
+	if (origin_acc.Balance - tr.Amount) < 0 {
+		http.Error(w, "Origin account do not have enough balance", http.StatusBadRequest)
+		return
+	}
+
+	dest_id := tr.AccountDestinationID
+	dest_acc, err := models.FindById(dest_id)
+	if err == models.ErrAccountNotFound {
+		http.Error(w, "Account not found", http.StatusNotFound)
+		return
+	}
+
+	origin_acc.Balance -= tr.Amount
+	dest_acc.Balance += tr.Amount
+
 	models.AddTransfer(tr)
-	t.l.Printf("Prod: %#v", tr)
+	t.l.Printf("Acc: %#v", tr)
 }

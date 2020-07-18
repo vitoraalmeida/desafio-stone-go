@@ -60,7 +60,6 @@ func (a *Accounts) GetBalance(w http.ResponseWriter, r *http.Request) {
 	a.l.Printf("Handle GET accounts/%d/balance", id)
 
 	acc, err := models.FindById(id)
-
 	if err == models.ErrAccountNotFound {
 		http.Error(w, "Account not found", http.StatusNotFound)
 		return
