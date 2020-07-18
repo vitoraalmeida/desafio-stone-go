@@ -22,12 +22,24 @@ func (t *Transfer) FromJSON(r io.Reader) error {
 type Transfers []*Transfer
 
 func GetTransfers() Transfers {
-	return TransfersList
+	return transfersList
 }
 
 func AddTransfer(t *Transfer) {
 	t.ID = getNextTransferID()
-	TransfersList = append(TransfersList, t)
+	transfersList = append(transfersList, t)
+}
+
+func FindTransfersByUserId(id int) Transfers {
+	var trs Transfers
+	for i := range transfersList {
+		t := transfersList[i]
+		if t.AccountOriginID == id {
+			trs = append(trs, t)
+		}
+	}
+
+	return trs
 }
 
 func (t *Transfers) ToJSON(w io.Writer) error {
@@ -36,11 +48,11 @@ func (t *Transfers) ToJSON(w io.Writer) error {
 }
 
 func getNextTransferID() int {
-	t := TransfersList[len(TransfersList)-1]
+	t := transfersList[len(transfersList)-1]
 	return t.ID + 1
 }
 
-var TransfersList = Transfers{
+var transfersList = Transfers{
 	&Transfer{
 		ID:                   1,
 		AccountOriginID:      1,

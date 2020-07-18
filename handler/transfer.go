@@ -2,6 +2,7 @@ package handler
 
 import (
 	"github.com/vitoraalmeida/desafio-stone-go/models"
+	"github.com/vitoraalmeida/desafio-stone-go/pkg/auth"
 	"log"
 	"net/http"
 )
@@ -17,8 +18,14 @@ func NewTransfers(l *log.Logger) *Transfers {
 func (t *Transfers) ListTransfers(w http.ResponseWriter, r *http.Request) {
 	t.l.Println("Handle GET transfers")
 
-	tr := models.GetTransfers()
-	if err := tr.ToJSON(w); err != nil {
+	user_id, err := auth.ExtractTokenID(r)
+	if err != nil {
+		http.Error(w, "Unauthorized ", http.StatusUnauthorized)
+		return
+	}
+
+	trs := models.FindTransfersByUserId(int(user_id))
+	if err := trs.ToJSON(w); err != nil {
 		http.Error(w, "Unable to marshal json", http.StatusInternalServerError)
 		return
 	}
@@ -39,8 +46,13 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	origin_id := tr.AccountOriginID
-	origin_acc, err := models.FindById(origin_id)
+	origin_id, err := auth.ExtractTokenID(r)
+	if err != nil {
+		http.Error(w, "Unauthorized ", http.StatusUnauthorized)
+		return
+	}
+
+	origin_acc, err := models.FindById(int(origin_id))
 	if err == models.ErrAccountNotFound {
 		http.Error(w, "Account not found", http.StatusNotFound)
 		return

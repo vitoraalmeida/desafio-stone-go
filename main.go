@@ -4,6 +4,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/vitoraalmeida/desafio-stone-go/handler"
+	"github.com/vitoraalmeida/desafio-stone-go/middlewares"
 	"log"
 	"net/http"
 	"os"
@@ -29,11 +30,11 @@ func main() {
 	getRouter := r.Methods("GET").Subrouter()
 	getRouter.HandleFunc("/accounts", ah.ListAccounts)
 	getRouter.HandleFunc("/accounts/{id:[0-9]+}/balance", ah.GetBalance)
-	getRouter.HandleFunc("/transfers", th.ListTransfers)
+	getRouter.HandleFunc("/transfers", middlewares.Authentication(th.ListTransfers))
 
 	postRouter := r.Methods("POST").Subrouter()
 	postRouter.HandleFunc("/accounts", ah.CreateAccount)
-	postRouter.HandleFunc("/transfers", th.CreateTransfer)
+	postRouter.HandleFunc("/transfers", middlewares.Authentication(th.CreateTransfer))
 	postRouter.HandleFunc("/login", lh.SignIn)
 
 	s := &http.Server{
