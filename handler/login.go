@@ -10,7 +10,8 @@ import (
 )
 
 type Login struct {
-	l *log.Logger
+	l  *log.Logger
+	as *models.AccountService
 }
 
 type Credentials struct {
@@ -18,8 +19,11 @@ type Credentials struct {
 	Secret string `json:"secret"`
 }
 
-func NewLogin(l *log.Logger) *Login {
-	return &Login{l}
+func NewLogin(l *log.Logger, as *models.AccountService) *Login {
+	return &Login{
+		l,
+		as,
+	}
 }
 
 func (ln *Login) SignIn(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +36,8 @@ func (ln *Login) SignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := models.FindByCPF(credentials.CPF)
+	ln.l.Println("VAI PROCURAR PELO CPF", credentials.CPF)
+	user, err := ln.as.FindByCPF(credentials.CPF)
 	if err == models.ErrAccountNotFound {
 		http.Error(w, "Account not found", http.StatusNotFound)
 		return

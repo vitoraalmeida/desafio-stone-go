@@ -11,18 +11,40 @@ import (
 )
 
 type Accounts struct {
-	l *log.Logger
+	l  *log.Logger
+	as *models.AccountService
 }
 
-func NewAccounts(l *log.Logger) *Accounts {
-	return &Accounts{l}
+func NewAccounts(l *log.Logger, as *models.AccountService) *Accounts {
+	return &Accounts{
+		l,
+		as,
+	}
 }
 
 func (a *Accounts) ListAccounts(w http.ResponseWriter, r *http.Request) {
 	a.l.Println("Handle GET accounts")
-	acc := models.GetAccounts()
-	if err := acc.ToJSON(w); err != nil {
-		http.Error(w, "Unable to marshal json", http.StatusInternalServerError)
+	acc, err := a.as.List()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var toj []models.Account
+
+	for _, a := range acc {
+		toj = append(toj, models.Account{
+			ID:        a.ID,
+			Name:      a.Name,
+			CPF:       a.CPF,
+			CreatedAt: a.CreatedAt,
+		})
+	}
+	a.l.Println(toj)
+	err = json.NewEncoder(w).Encode(toj)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -36,6 +58,8 @@ func (a *Accounts) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	a.l.Println(acc)
+
 	secret := []byte(acc.Secret)
 	hashSecret, err := bcrypt.GenerateFromPassword(secret, bcrypt.DefaultCost)
 
@@ -46,8 +70,10 @@ func (a *Accounts) CreateAccount(w http.ResponseWriter, r *http.Request) {
 
 	acc.Secret = string(hashSecret)
 
-	models.AddAccount(acc)
-	a.l.Printf("Acc: %#v", acc)
+	err = a.as.Create(acc)
+	if err != nil {
+		a.l.Println(err)
+	}
 }
 
 func (a *Accounts) GetBalance(w http.ResponseWriter, r *http.Request) {
@@ -59,7 +85,7 @@ func (a *Accounts) GetBalance(w http.ResponseWriter, r *http.Request) {
 	}
 	a.l.Printf("Handle GET accounts/%d/balance", id)
 
-	acc, err := models.FindById(id)
+	acc, err := a.as.FindByID(id)
 	if err == models.ErrAccountNotFound {
 		http.Error(w, "Account not found", http.StatusNotFound)
 		return
