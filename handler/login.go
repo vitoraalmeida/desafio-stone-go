@@ -9,13 +9,13 @@ import (
 	"net/http"
 )
 
-type Login struct {
-	l *log.Logger
-}
-
 type Credentials struct {
 	CPF    string `json:"cpf"`
 	Secret string `json:"secret"`
+}
+
+type Login struct {
+	l *log.Logger
 }
 
 func NewLogin(l *log.Logger) *Login {
@@ -24,17 +24,27 @@ func NewLogin(l *log.Logger) *Login {
 
 func (ln *Login) SignIn(w http.ResponseWriter, r *http.Request) {
 	ln.l.Println("Handle POST login")
+	errorMessage := "Error signing in"
 	credentials := &Credentials{}
-	err := json.NewDecoder(r.Body).Decode(credentials)
 
+	err := json.NewDecoder(r.Body).Decode(credentials)
+	w.Header().Set("Content-type", "application/json")
 	if err != nil {
-		http.Error(w, "Unable to unmarshal json", http.StatusBadRequest)
+		log.Println(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(errorMessage))
 		return
 	}
 
 	user, err := models.FindByCPF(credentials.CPF)
-	if err == models.ErrAccountNotFound {
-		http.Error(w, "Account not found", http.StatusNotFound)
+	if err != nil && err != models.ErrAccountNotFound {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(errorMessage))
+		return
+	}
+	if user == nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Account not found"))
 		return
 	}
 
@@ -42,17 +52,21 @@ func (ln *Login) SignIn(w http.ResponseWriter, r *http.Request) {
 		[]byte(user.Secret),
 		[]byte(credentials.Secret),
 	)
-
 	if err != nil {
-		http.Error(w, "Wrong Credentials", http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Error: Wrong Credentials"))
 		return
 	}
 
 	token, err := auth.CreateToken(user.ID)
 	if err != nil {
-		http.Error(w, "Failed create token", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(errorMessage))
+		return
 	}
+
 	if err = json.NewEncoder(w).Encode(token); err != nil {
-		http.Error(w, "Account not found", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(errorMessage))
 	}
 }
