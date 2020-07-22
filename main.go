@@ -37,9 +37,10 @@ func main() {
 	l := log.New(os.Stdout, "desafio-stone-go", log.LstdFlags)
 
 	ar := models.NewAccountRepository(db)
+	tr := models.NewTransferRepository(db)
 
 	ah := handler.NewAccounts(l, ar)
-	th := handler.NewTransfers(l, ar)
+	th := handler.NewTransfers(l, ar, tr)
 	lh := handler.NewLogin(l, ar)
 	r := mux.NewRouter()
 

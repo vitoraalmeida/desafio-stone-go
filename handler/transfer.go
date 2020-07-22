@@ -10,9 +10,9 @@ import (
 )
 
 type TransferPresenter struct {
-	ID                   int       `json:"id"`
-	AccountOriginID      int       `json:"account_origin_id"`
-	AccountDestinationID int       `json:"account_destination_id"`
+	ID                   uint      `json:"transfer_id"`
+	AccountOriginID      uint      `json:"account_origin_id"`
+	AccountDestinationID uint      `json:"account_destination_id"`
 	Amount               float64   `json:"amount"`
 	CreatedAt            time.Time `json:"created_at"`
 }
@@ -20,12 +20,18 @@ type TransferPresenter struct {
 type Transfers struct {
 	l  *log.Logger
 	ar *models.AccountRepository
+	tr *models.TransferRepository
 }
 
-func NewTransfers(l *log.Logger, ar *models.AccountRepository) *Transfers {
+func NewTransfers(
+	l *log.Logger,
+	ar *models.AccountRepository,
+	tr *models.TransferRepository,
+) *Transfers {
 	return &Transfers{
 		l,
 		ar,
+		tr,
 	}
 }
 
@@ -42,7 +48,8 @@ func (t *Transfers) ListTransfers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	trs, err := models.FindTransfersByUserId(int(user_id))
+	t.l.Println("chegou no find by origin")
+	trs, err := t.tr.FindByOriginID(uint(user_id))
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil && err != models.ErrTransferNotFound {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -77,7 +84,7 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var input struct {
-		AccountDestinationID int     `json:"account_destination_id"`
+		AccountDestinationID uint    `json:"account_destination_id"`
 		Amount               float64 `json:"amount"`
 	}
 
@@ -126,13 +133,13 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tr := &models.Transfer{
-		AccountOriginID:      int(originID),
+		AccountOriginID:      uint(originID),
 		AccountDestinationID: input.AccountDestinationID,
 		Amount:               input.Amount,
 		CreatedAt:            time.Now(),
 	}
 
-	tr.ID, err = models.AddTransfer(tr)
+	tr.ID, err = t.tr.Create(tr)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(errorMessage))
