@@ -97,7 +97,7 @@ func (as *AccountRepository) FindByID(id uint) (*Account, error) {
 	var a Account
 	rows, err := stmt.Query(id)
 	if err != nil {
-		return nil, ErrAccountNotFound
+		return nil, err
 	}
 	for rows.Next() {
 		err = rows.Scan(&a.ID, &a.Name, &a.CPF, &a.Balance, &a.CreatedAt)
@@ -108,28 +108,24 @@ func (as *AccountRepository) FindByID(id uint) (*Account, error) {
 	return &a, nil
 }
 
-func FindByCPF(cpf string) (*Account, error) {
-	for i := range accounts {
-		a := accounts[i]
-		if a.CPF == cpf {
-			return a, nil
+func (ar *AccountRepository) FindByCPF(cpf string) (*Account, error) {
+	stmt, err := ar.db.Prepare(`
+		select id, name, cpf, secret, balance, created_at from account
+		where cpf = $1`)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+	var a Account
+	rows, err := stmt.Query(cpf)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		err = rows.Scan(&a.ID, &a.Name, &a.CPF, &a.Secret, &a.Balance, &a.CreatedAt)
+		if err != nil {
+			return nil, ErrAccountNotFound
 		}
 	}
-	return nil, ErrAccountNotFound
-}
-
-func getNextID() uint {
-	a := accounts[len(accounts)-1]
-	return a.ID + 1
-}
-
-var accounts = []*Account{
-	{
-		ID:        1,
-		Name:      "José da Silva",
-		CPF:       "01111111111",
-		Secret:    "hash",
-		Balance:   9999.99,
-		CreatedAt: time.Now(),
-	},
+	return &a, nil
 }

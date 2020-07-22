@@ -40,7 +40,7 @@ func main() {
 
 	ah := handler.NewAccounts(l, ar)
 	th := handler.NewTransfers(l, ar)
-	lh := handler.NewLogin(l)
+	lh := handler.NewLogin(l, ar)
 	r := mux.NewRouter()
 
 	getRouter := r.Methods("GET").Subrouter()

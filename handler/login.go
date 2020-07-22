@@ -15,11 +15,15 @@ type Credentials struct {
 }
 
 type Login struct {
-	l *log.Logger
+	l  *log.Logger
+	ar *models.AccountRepository
 }
 
-func NewLogin(l *log.Logger) *Login {
-	return &Login{l}
+func NewLogin(l *log.Logger, ar *models.AccountRepository) *Login {
+	return &Login{
+		l,
+		ar,
+	}
 }
 
 func (ln *Login) SignIn(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +40,7 @@ func (ln *Login) SignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := models.FindByCPF(credentials.CPF)
+	user, err := ln.ar.FindByCPF(credentials.CPF)
 	if err != nil && err != models.ErrAccountNotFound {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(errorMessage))
