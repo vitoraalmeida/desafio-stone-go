@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: "stone_go"
+      POSTGRES_USER: "stone_go"
+      POSTGRES_DB: "stone_go"
+    ports:
+      - "15432:5432"
+    volumes:
+      - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql
+
