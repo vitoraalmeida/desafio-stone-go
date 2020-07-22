@@ -1,50 +1,44 @@
 package models
 
 import (
-	"encoding/json"
-	"io"
+	"errors"
 	"time"
 )
 
+var ErrTransferNotFound = errors.New("Models: trasnfer not found")
+
 type Transfer struct {
-	ID                   int       `json:"id"`
-	AccountOriginID      int       `json:"account_origin_id"`
-	AccountDestinationID int       `json:"account_destination_id"`
-	Amount               float32   `json:"amount"`
-	CreatedAt            time.Time `json:"created_at"`
+	ID                   int
+	AccountOriginID      int
+	AccountDestinationID int
+	Amount               float64
+	CreatedAt            time.Time
 }
 
-func (t *Transfer) FromJSON(r io.Reader) error {
-	e := json.NewDecoder(r)
-	return e.Decode(t)
-}
-
-type Transfers []*Transfer
-
-func GetTransfers() Transfers {
+func GetTransfers() []*Transfer {
 	return transfersList
 }
 
-func AddTransfer(t *Transfer) {
+func AddTransfer(t *Transfer) (int, error) {
 	t.ID = getNextTransferID()
 	transfersList = append(transfersList, t)
+	return t.ID, nil
 }
 
-func FindTransfersByUserId(id int) Transfers {
-	var trs Transfers
+func FindTransfersByUserId(id int) ([]*Transfer, error) {
+	var trs []*Transfer
 	for i := range transfersList {
 		t := transfersList[i]
-		if t.AccountOriginID == id {
+		if t.AccountOriginID == id || t.AccountDestinationID == id {
 			trs = append(trs, t)
 		}
 	}
 
-	return trs
-}
+	if len(trs) == 0 {
+		return nil, ErrTransferNotFound
+	}
 
-func (t *Transfers) ToJSON(w io.Writer) error {
-	e := json.NewEncoder(w)
-	return e.Encode(t)
+	return trs, nil
 }
 
 func getNextTransferID() int {
@@ -52,8 +46,8 @@ func getNextTransferID() int {
 	return t.ID + 1
 }
 
-var transfersList = Transfers{
-	&Transfer{
+var transfersList = []*Transfer{
+	{
 		ID:                   1,
 		AccountOriginID:      1,
 		AccountDestinationID: 2,
