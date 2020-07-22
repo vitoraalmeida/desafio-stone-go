@@ -12,32 +12,34 @@ import (
 )
 
 type AccountPresenter struct {
-	ID        int       `json:"id"`
+	ID        uint      `json:"id"`
 	Name      string    `json:"name"`
 	CPF       string    `json:"cpf"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 type Accounts struct {
-	l *log.Logger
+	l  *log.Logger
+	ar *models.AccountRepository
 }
 
-func NewAccounts(l *log.Logger) *Accounts {
-	return &Accounts{l}
+func NewAccounts(l *log.Logger, ar *models.AccountRepository) *Accounts {
+	return &Accounts{
+		l,
+		ar,
+	}
 }
 
 func (a *Accounts) ListAccounts(w http.ResponseWriter, r *http.Request) {
 	errorMessage := "Error reading accounts"
 	a.l.Println("Handle GET accounts")
-	data := models.GetAccounts()
-
+	data, err := a.ar.List()
 	w.Header().Set("Content-type", "application/json")
-	if data == nil {
-		w.WriteHeader(http.StatusNotFound)
+	if err != nil && err != models.ErrAccountNotFound {
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(errorMessage))
 		return
 	}
-
 	var toJ []*AccountPresenter
 	for _, a := range data {
 		toJ = append(toJ, &AccountPresenter{
@@ -56,17 +58,16 @@ func (a *Accounts) ListAccounts(w http.ResponseWriter, r *http.Request) {
 func (a *Accounts) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	errorMessage := "Error creating account"
 	a.l.Println("Handle POST accounts")
-
 	acc := &models.Account{}
 
-	w.Header().Set("Content-type", "application/json")
-
 	var input struct {
-		Name   string `json:"name"`
-		CPF    string `json:"cpf"`
-		Secret string `json:"secret"`
+		Name    string  `json:"name"`
+		CPF     string  `json:"cpf"`
+		Secret  string  `json:"secret"`
+		Balance float64 `json:"balance"`
 	}
 
+	w.Header().Set("Content-type", "application/json")
 	err := json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
 		log.Println(err.Error())
@@ -82,17 +83,27 @@ func (a *Accounts) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(errorMessage))
 		return
 	}
-	input.Secret = string(hashSecret)
 
+	input.Secret = string(hashSecret)
 	acc = &models.Account{
 		Name:      input.Name,
 		CPF:       input.CPF,
 		Secret:    input.Secret,
-		Balance:   999.99,
+		Balance:   input.Balance,
 		CreatedAt: time.Now(),
 	}
 
-	acc.ID = models.AddAccount(acc)
+	acc.ID, err = a.ar.Create(acc)
+	if err != nil {
+		if err == models.ErrAlreadyRegistred {
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte("CPF already registred"))
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(errorMessage))
+		return
+	}
 
 	toJ := &AccountPresenter{
 		ID:        acc.ID,
@@ -123,7 +134,7 @@ func (a *Accounts) GetBalance(w http.ResponseWriter, r *http.Request) {
 
 	a.l.Printf("Handle GET accounts/%d/balance", id)
 
-	acc, err := models.FindById(id)
+	acc, err := a.ar.FindByID(uint(id))
 
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil && err != models.ErrAccountNotFound {

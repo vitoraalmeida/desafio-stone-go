@@ -1,10 +1,14 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 	"github.com/vitoraalmeida/desafio-stone-go/handler"
 	"github.com/vitoraalmeida/desafio-stone-go/middlewares"
+	"github.com/vitoraalmeida/desafio-stone-go/models"
 	"log"
 	"net/http"
 	"os"
@@ -19,12 +23,24 @@ func main() {
 		log.Println("Getting the env values...")
 	}
 
+	dsn := fmt.Sprintf(
+		`host=%s port=%s user=%s password=%s dbname=%s sslmode=disable`,
+		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"),
+		os.Getenv("DB_PASS"), os.Getenv("DB_NAME"),
+	)
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	defer db.Close()
+
 	l := log.New(os.Stdout, "desafio-stone-go", log.LstdFlags)
 
-	ah := handler.NewAccounts(l)
-	th := handler.NewTransfers(l)
-	lh := handler.NewLogin(l)
+	ar := models.NewAccountRepository(db)
 
+	ah := handler.NewAccounts(l, ar)
+	th := handler.NewTransfers(l, ar)
+	lh := handler.NewLogin(l)
 	r := mux.NewRouter()
 
 	getRouter := r.Methods("GET").Subrouter()

@@ -18,11 +18,15 @@ type TransferPresenter struct {
 }
 
 type Transfers struct {
-	l *log.Logger
+	l  *log.Logger
+	ar *models.AccountRepository
 }
 
-func NewTransfers(l *log.Logger) *Transfers {
-	return &Transfers{l}
+func NewTransfers(l *log.Logger, ar *models.AccountRepository) *Transfers {
+	return &Transfers{
+		l,
+		ar,
+	}
 }
 
 func (t *Transfers) ListTransfers(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +95,7 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	originAcc, err := models.FindById(int(originID))
+	originAcc, err := t.ar.FindByID(uint(originID))
 	if err != nil && err != models.ErrAccountNotFound {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(errorMessage))
@@ -109,7 +113,7 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	destID := input.AccountDestinationID
-	destAcc, err := models.FindById(destID)
+	destAcc, err := t.ar.FindByID(uint(destID))
 	if err != nil && err != models.ErrAccountNotFound {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(errorMessage))
