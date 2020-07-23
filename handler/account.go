@@ -71,6 +71,13 @@ func (a *Accounts) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
+
+	inputErr := validate(input.Name, input.CPF, input.Secret, input.Balance)
+	if inputErr != "" {
+		http.Error(w, inputErr, http.StatusBadRequest)
+		return
+	}
+
 	secret := []byte(input.Secret)
 	hashSecret, err := bcrypt.GenerateFromPassword(secret, bcrypt.DefaultCost)
 	if err != nil {
@@ -94,17 +101,7 @@ func (a *Accounts) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
-	toJ := &AccountPresenter{
-		ID:        acc.ID,
-		Name:      acc.Name,
-		CPF:       acc.CPF,
-		CreatedAt: acc.CreatedAt,
-	}
 	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(toJ); err != nil {
-		a.l.Println(err.Error())
-		http.Error(w, errorMessage, http.StatusInternalServerError)
-	}
 }
 
 func (a *Accounts) GetBalance(w http.ResponseWriter, r *http.Request) {
@@ -132,4 +129,24 @@ func (a *Accounts) GetBalance(w http.ResponseWriter, r *http.Request) {
 	if err = json.NewEncoder(w).Encode(acc.Balance); err != nil {
 		http.Error(w, errorMessage, http.StatusInternalServerError)
 	}
+}
+
+func validate(name, cpf, secret string, balance float64) string {
+	if name == "" {
+		return "Account name must not be empty"
+	}
+	if cpf == "" || len(cpf) < 11 {
+		return "CPF must be at least 11 digits"
+	}
+	_, err := strconv.Atoi(cpf)
+	if err != nil {
+		return "CPF must only contain numbers"
+	}
+	if len(secret) < 6 {
+		return "Secret must be at least 6 digits"
+	}
+	if balance < 0 {
+		return "Balance must be at least 0.00"
+	}
+	return ""
 }
