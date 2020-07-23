@@ -48,7 +48,6 @@ func (t *Transfers) ListTransfers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t.l.Println("chegou no find by origin")
 	trs, err := t.tr.FindByOriginID(uint(user_id))
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil && err != models.ErrTransferNotFound {
@@ -63,11 +62,20 @@ func (t *Transfers) ListTransfers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = json.NewEncoder(w).Encode(trs); err != nil {
+	var toJ []*TransferPresenter
+	for _, t := range trs {
+		toJ = append(toJ, &TransferPresenter{
+			ID:                   t.ID,
+			AccountOriginID:      t.AccountOriginID,
+			AccountDestinationID: t.AccountDestinationID,
+			Amount:               t.Amount,
+			CreatedAt:            t.CreatedAt,
+		})
+	}
+	if err = json.NewEncoder(w).Encode(toJ); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(errorMessage))
 	}
-
 }
 
 func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
@@ -75,11 +83,10 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 	t.l.Println("Handle POST transfers")
 
 	originID, err := auth.ExtractTokenID(r)
-
 	w.Header().Set("Content-type", "application/json")
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Unauthorized operation: Login required"))
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(errorMessage))
 		return
 	}
 
@@ -87,7 +94,6 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 		AccountDestinationID uint    `json:"account_destination_id"`
 		Amount               float64 `json:"amount"`
 	}
-
 	err = json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
 		log.Println(err.Error())
@@ -113,6 +119,7 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(errorMessage))
 		return
 	}
+
 	if (originAcc.Balance - input.Amount) < 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Insufficient balance"))
@@ -148,6 +155,16 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 
 	originAcc.Balance -= tr.Amount
 	destAcc.Balance += tr.Amount
+	if err := t.ar.UpdateBalance(originAcc.ID, originAcc.Balance); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(errorMessage))
+		return
+	}
+	if err := t.ar.UpdateBalance(destAcc.ID, destAcc.Balance); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(errorMessage))
+		return
+	}
 
 	toJ := &TransferPresenter{
 		ID:                   tr.ID,

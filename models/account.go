@@ -56,7 +56,6 @@ func (as *AccountRepository) Create(a *Account) (uint, error) {
 }
 
 func (as *AccountRepository) List() ([]*Account, error) {
-	log.Println("Chegou na database")
 	stmt, err := as.db.Prepare(`select id, name, cpf, created_at from account`)
 	if err != nil {
 		return nil, err
@@ -128,4 +127,12 @@ func (ar *AccountRepository) FindByCPF(cpf string) (*Account, error) {
 		}
 	}
 	return &a, nil
+}
+
+func (ar *AccountRepository) UpdateBalance(id uint, newBalance float64) error {
+	_, err := ar.db.Exec(`update account set balance = $1 where id = $2`, newBalance, id)
+	if err != nil {
+		return err
+	}
+	return nil
 }
