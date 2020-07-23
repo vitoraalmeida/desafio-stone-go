@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/vitoraalmeida/desafio-stone-go/models"
 	"github.com/vitoraalmeida/desafio-stone-go/pkg/auth"
 	"log"
@@ -40,13 +41,11 @@ func (t *Transfers) ListTransfers(w http.ResponseWriter, r *http.Request) {
 	t.l.Println("Handle GET transfers")
 
 	user_id, err := auth.ExtractTokenID(r)
-
 	w.Header().Set("Content-type", "application/json")
 	if err != nil {
 		http.Error(w, "Login required", http.StatusUnauthorized)
 		return
 	}
-
 	trs, err := t.tr.FindByOriginID(uint(user_id))
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil && err != models.ErrTransferNotFound {
@@ -54,7 +53,6 @@ func (t *Transfers) ListTransfers(w http.ResponseWriter, r *http.Request) {
 		return
 
 	}
-
 	if trs == nil {
 		http.Error(w, "This account don't have transfers", http.StatusNotFound)
 		return
@@ -97,6 +95,10 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if uint(originID) == input.AccountDestinationID {
+		http.Error(w, "Destination must be another account", http.StatusBadRequest)
+		return
+	}
 	if input.Amount <= 0 {
 		http.Error(w, "Amount 0 not allowed", http.StatusBadRequest)
 		return
@@ -135,12 +137,8 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:            time.Now(),
 	}
 
-	tr.ID, err = t.tr.Create(tr)
-	if err != nil {
-		http.Error(w, errorMessage, http.StatusInternalServerError)
-		return
-	}
-
+	prevOriginBal := originAcc.Balance
+	prevDestBal := destAcc.Balance
 	originAcc.Balance -= tr.Amount
 	destAcc.Balance += tr.Amount
 	if err := t.ar.UpdateBalance(originAcc.ID, originAcc.Balance); err != nil {
@@ -148,21 +146,40 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := t.ar.UpdateBalance(destAcc.ID, destAcc.Balance); err != nil {
+		t.l.Printf(`Error on updating destination account balance, update on origin acc:%v`, tr)
+		if err = t.ar.UpdateBalance(originAcc.ID, prevOriginBal); err != nil {
+			t.l.Printf("Error reverting Origin account balance update:\n %v", tr)
+		}
 		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 
-	toJ := &TransferPresenter{
-		ID:                   tr.ID,
-		AccountOriginID:      tr.AccountOriginID,
-		AccountDestinationID: tr.AccountDestinationID,
-		Amount:               tr.Amount,
-		CreatedAt:            tr.CreatedAt,
+	tr.ID, err = t.tr.Create(tr)
+	if err != nil {
+		t.revertAllBalanceUpdate(originAcc, destAcc, prevOriginBal, prevDestBal)
+		errorMessage := fmt.Sprintf(
+			`Error on tranfer from account id: %d, to account id: %d amount: %.2f`,
+			tr.AccountOriginID, tr.AccountDestinationID, tr.Amount)
+		t.l.Println(errorMessage)
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(toJ); err != nil {
-		t.l.Println(err.Error())
-		http.Error(w, errorMessage, http.StatusInternalServerError)
+}
+
+func (t *Transfers) revertAllBalanceUpdate(
+	originAcc, destAcc *models.Account,
+	prevOriginBal, prevDestBal float64,
+) {
+	if err := t.ar.UpdateBalance(originAcc.ID, prevOriginBal); err != nil {
+		t.l.Printf(`Error reverting balance update on bad transfer:
+			Account: %d; Previous balance: %.2f; New balance %.2f`,
+			originAcc.ID, prevOriginBal, originAcc.Balance)
+	}
+	if err := t.ar.UpdateBalance(destAcc.ID, prevDestBal); err != nil {
+		t.l.Printf(`Error reverting balance update on bad transfer:
+			Account: %d; Previous balance: %.2f; New balance %.2f`,
+			destAcc.ID, prevDestBal, destAcc.Balance)
 	}
 }
