@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	_ "github.com/lib/pq"
-	"log"
 	"time"
 )
 
@@ -43,7 +42,7 @@ func (as *AccountRepository) Create(a *Account) (uint, error) {
 		a.CPF,
 		a.Secret,
 		a.Balance,
-		time.Now().Format("2006-01-02")).Scan(&id)
+		a.CreatedAt).Scan(&id)
 
 	if err != nil {
 		if id == 0 {
@@ -66,23 +65,18 @@ func (as *AccountRepository) List() ([]*Account, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	for rows.Next() {
 		var a Account
 		err = rows.Scan(&a.ID, &a.Name, &a.CPF, &a.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
-		log.Println(accounts)
 		accounts = append(accounts, &a)
 
 	}
-
 	if len(accounts) == 0 {
 		return nil, ErrAccountNotFound
 	}
-
-	log.Println(accounts)
 	return accounts, nil
 }
 

@@ -35,7 +35,7 @@ func (ts *TransferRepository) Create(t *Transfer) (uint, error) {
 		t.AccountOriginID,
 		t.AccountDestinationID,
 		t.Amount,
-		time.Now().Format("2006-01-02")).Scan(&id)
+		t.CreatedAt).Scan(&id)
 
 	if err != nil {
 		return 0, err
