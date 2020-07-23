@@ -35,20 +35,17 @@ func (ln *Login) SignIn(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	if err != nil {
 		log.Println(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 
 	user, err := ln.ar.FindByCPF(credentials.CPF)
 	if err != nil && err != models.ErrAccountNotFound {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 	if user == nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Account not found"))
+		http.Error(w, "Account not found", http.StatusNotFound)
 		return
 	}
 
@@ -57,20 +54,17 @@ func (ln *Login) SignIn(w http.ResponseWriter, r *http.Request) {
 		[]byte(credentials.Secret),
 	)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Error: Wrong Credentials"))
+		http.Error(w, "Wrong credentials", http.StatusUnauthorized)
 		return
 	}
 
 	token, err := auth.CreateToken(user.ID)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 
 	if err = json.NewEncoder(w).Encode(token); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 	}
 }

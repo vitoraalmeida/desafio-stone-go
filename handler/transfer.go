@@ -43,22 +43,20 @@ func (t *Transfers) ListTransfers(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-type", "application/json")
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Unauthorized operation: Login required"))
+		http.Error(w, "Login required", http.StatusUnauthorized)
 		return
 	}
 
 	trs, err := t.tr.FindByOriginID(uint(user_id))
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil && err != models.ErrTransferNotFound {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
+
 	}
 
 	if trs == nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("This account don't have transfers"))
+		http.Error(w, "This account don't have transfers", http.StatusNotFound)
 		return
 	}
 
@@ -73,8 +71,7 @@ func (t *Transfers) ListTransfers(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	if err = json.NewEncoder(w).Encode(toJ); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 	}
 }
 
@@ -85,8 +82,7 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 	originID, err := auth.ExtractTokenID(r)
 	w.Header().Set("Content-type", "application/json")
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 
@@ -97,45 +93,38 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 	err = json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
 		log.Println(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 
 	if input.Amount <= 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Amount 0 not allowed"))
+		http.Error(w, "Amount 0 not allowed", http.StatusBadRequest)
 		return
 	}
 
 	originAcc, err := t.ar.FindByID(uint(originID))
 	if err != nil && err != models.ErrAccountNotFound {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 	if originAcc == nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusNotFound)
 		return
 	}
 
 	if (originAcc.Balance - input.Amount) < 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Insufficient balance"))
+		http.Error(w, "Insufficient balance", http.StatusBadRequest)
 		return
 	}
 
 	destID := input.AccountDestinationID
 	destAcc, err := t.ar.FindByID(uint(destID))
 	if err != nil && err != models.ErrAccountNotFound {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 	if originAcc == nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusNotFound)
 		return
 	}
 
@@ -148,21 +137,18 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 
 	tr.ID, err = t.tr.Create(tr)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 
 	originAcc.Balance -= tr.Amount
 	destAcc.Balance += tr.Amount
 	if err := t.ar.UpdateBalance(originAcc.ID, originAcc.Balance); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 	if err := t.ar.UpdateBalance(destAcc.ID, destAcc.Balance); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
 
@@ -177,8 +163,6 @@ func (t *Transfers) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(toJ); err != nil {
 		t.l.Println(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(errorMessage))
-		return
+		http.Error(w, errorMessage, http.StatusInternalServerError)
 	}
 }
